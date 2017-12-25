@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+
+<head>
+	<meta charset="utf-8"/>
+	<title>Вълнàта</title>
+
+	<script src="webgl-fmi.js">
+		// Направете следните промени по тази програма
+		//	(1)	Повърхността да е с подвижни вълни от центъра към периферията
+		//	(2)	Осветяването да е идеално и да няма ефект на Мах
+		//	(3)	Да може с бутони да се превключва между шоколадова повърхност
+		//		и повърхност, оцветена като дъгата
+	</script>
+	<script src="Utilities.js">
+	</script>
+	
+	<script id="vshader" type="x-shader/x-vertex">
+		uniform mat4 uProjectionMatrix;
+		uniform mat4 uViewMatrix;
+		uniform mat4 uModelMatrix;
+		
+		uniform bool uUseAmbient;
+		uniform vec3 uAmbientColor;
+
+		uniform bool uUseDiffuse;
+		uniform vec3 uDiffuseColor;
+
+		uniform vec3 uLightDir;
+		
+		attribute vec3 aXYZ;		// координати на връх
+		attribute vec3 aColor;		// цвят на връх
+		attribute vec3 aNormal;		// нормален вектор на връх
+
+		varying vec3 vNormal;
+		varying vec3 vColor;
+		varying vec3 vPos;
+		
+		void main ()
+		{
+			mat4 mvMatrix = uViewMatrix * uModelMatrix;
+			vec4 pos = mvMatrix * vec4(aXYZ,1);
+			gl_Position = uProjectionMatrix * pos;
+
+			// околна светлина
+			vColor = aColor;
+			if (uUseAmbient)
+				vColor *= uAmbientColor;
+			
+			// дифузно отражение
+			vec3 normal = vec3(normalize(mvMatrix*vec4(aNormal,0)));
+			vec3 light = normalize(-uLightDir);
+			if (uUseDiffuse)
+				vColor += aColor*uDiffuseColor*max(dot(normal,light),0.0);
+
+			vPos = pos.xyz/pos.w;
+			vNormal = normal;
+		}
+	</script>
+	
+	<script id="fshader" type="x-shader/x-fragment">
+		precision mediump float;
+
+		// преместено тук от другия шейдър
+		uniform highp vec3 uLightDir;
+		uniform bool uUseSpecular;
+		uniform vec3 uSpecularColor;
+		uniform float uShininess;
+
+		varying vec3 vNormal;
+		varying vec3 vColor;
+		varying vec3 vPos;
+
+		void main( )
+		{
+			vec3 specularColor = vec3(0);
+			
+			// огледално отражение
+			if (uUseSpecular)
+			{
+				vec3 light = normalize(-uLightDir);
+				vec3 reflectedLight = normalize(reflect(light,normalize(vNormal)));
+				vec3 viewDir = normalize(vPos);
+
+				float cosa = max(dot(reflectedLight,viewDir),0.0);
+				specularColor = uSpecularColor*pow(cosa,uShininess);
+			}
+
+			gl_FragColor = vec4(vColor+specularColor,1);
+		}
+	</script>
+
+	<script>
+		var k=62;
+
+		function brownify(){
+			color = false;
+		}
+
+		function nyanify(){
+			color = true;
+		}
+
+		function start( )
+		{
+			var	canvas = document.getElementById("picasso");
+			canvas.addEventListener('webglcontextlost',function(event){event.preventDefault();},false);
+			canvas.addEventListener('webglcontextrestored',function(){init();},false);
+			
+			initColors();
+			init();
+			drawFrame();
+		}
+		
+		function draw()
+		{
+			identity();
+			perspective(30,gl.canvas.width/gl.canvas.height,1,40000);
+			var data = [];
+			drawSurface(data);
+			webglDraw(data);
+			data = [];
+		}
+		
+		function initColors(){
+			var nyanHelper = new NyanHelper([255,125,125]);
+			for (var x = 0; x <= Math.sqrt(k*k*2)+1; x++) {
+					updateColor(x*14, nyanHelper)
+					queue.splice(x, 0, [nyanHelper.getRed(), nyanHelper.getGreen(), nyanHelper.getBlue()])
+					nyanHelper.reset();
+			}
+		}
+		
+		var frame = 0;
+				
+				
+		function updateColor(value, nyanHelper) {
+			for (var i = 0; i < value; i++) {
+				nyanHelper.changeColor();
+			}
+		}
+	
+		function drawFrame()
+		{
+			frame++;
+			phase+=0.2;
+			if(phase == 3.6){
+				phase = 0;
+			}
+			gl.clear(gl.COLOR_BUFFER_BIT+gl.DEPTH_BUFFER_BIT); // изчистваме цвета и дълбочината
+
+			// движение на камерата около повърхнината с периодично
+			// приближаване към и отдалечаване от нея
+			var dist = 80+37*Math.sin(frame/100);
+			var d = 0.6+0.3*Math.sin(frame/200);
+			lookAt([dist*Math.cos(frame/300)*d,dist*Math.sin(frame/300)*d,(140-dist)*d], [0.1,-0.1,0], [0,0,1]);
+			//lookAt([100,100,100], [0.1,-0.1,0], [0,0,1]);
+			useMatrix();
+			gl.drawArrays(gl.TRIANGLES,0,(2*k)*(2*k)*(2*3));
+			draw();
+			
+			requestAnimationFrame(drawFrame);
+		}
+	</script>	
+</head>
+
+<body onload="start()">
+	<h2>Вълнàта</h2>
+
+	<noscript>
+		Искаме JavaScript, но няма!
+	</noscript>
+	
+	<canvas id="picasso" width="1200" height="800" style="border: solid;">
+		Искаме canvas, но няма!
+	</canvas>
+	<div>
+	<button type="button" onclick="nyanify()">От нян.</button>
+	<button type="button" onclick="brownify()">От шоколад.</button>	
+	</div>
+</body>
