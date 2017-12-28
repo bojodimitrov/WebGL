@@ -42,7 +42,7 @@
 			gl.uniform3f(uLightDir,0,0,-1);
 
 			// създаване на случаен терен
-			terrain = new TerrainGenerator([0,0,0], 1, [200,200], 7);
+			terrain = new TerrainGenerator([0,0,-26], 1, [200,200], 8);
 			terra = [];
 			for (var i=0; i<50; i++)
 			{
@@ -52,7 +52,7 @@
 			}
 			
 			// водата
-			water = new Cuboid([0,0,-30],[200,200,50]);
+			water = new Cuboid([0,0,-50],[200,200,50]);
 			water.color = [0,0,0.5];
 		}
 

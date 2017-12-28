@@ -5,8 +5,16 @@ class TerrainGenerator {
         this.density = density;
         this.dimensions = dimensions;
         this.color = [0.1, 0.8, 0.2];
+        this.waterLevel = 0;
+        this.greenThreshold = 15;
+        this.permanentFrost = 40;
         this.generatePoints();
         this.data = this.generateTerrain();
+        
+    }
+
+    updateWaterLevel(waterLevel){
+        this.waterLevel = waterLevel;
     }
 
     generatePoints() {
@@ -27,97 +35,112 @@ class TerrainGenerator {
             }
             this.numberOfLines++;
         }
-        var randOffset = 30;
+        var randOffset = 0;
         this.points[0][0][2] = random(-randOffset, randOffset)
-        this.points[0][this.numberOfLines-1][2] = random(-randOffset, randOffset)
-        this.points[this.numberOfLines-1][0][2] = random(-randOffset, randOffset)
-        this.points[this.numberOfLines-1][this.numberOfLines-1][2] = random(-randOffset, randOffset)
-        this.diamondStep(0, 0, this.numberOfLines-1, this.numberOfLines-1, 50)
+        this.points[0][this.numberOfLines - 1][2] = random(-randOffset, randOffset)
+        this.points[this.numberOfLines - 1][0][2] = random(-randOffset, randOffset)
+        this.points[this.numberOfLines - 1][this.numberOfLines - 1][2] = random(-randOffset, randOffset)
+        this.diamondSquare(0, 0, this.numberOfLines, this.numberOfLines, 60, this.numberOfLines-1)
     }
 
-    diamondStep(iStart, jStart, iEnd, jEnd, summandValue){
-        var difference = iEnd - iStart;
-        if(difference == 1) return;
-        var value = ((this.points[iStart][jStart][2] + this.points[iStart][jEnd][2] + this.points[iEnd][jStart][2] + this.points[iEnd][jEnd][2]) / 4) + random(-summandValue, summandValue);
-        var iMidPoint = (iStart + iEnd) / 2;
-        var jMidPoint = (jStart + jEnd) / 2;
-        this.points[iMidPoint][jMidPoint][2] = value;
-        
-        summandValue = summandValue - summandValue * 0.5;
+    diamondSquare(iStart, jStart, iEnd, jEnd, summandValue, level) {
+        if (level <= 1) return;
 
-        
-        
-        this.squareStep(iMidPoint-difference/2, jMidPoint, difference/2, summandValue)
-        this.squareStep(iMidPoint+difference/2, jMidPoint, difference/2, summandValue)
-        this.squareStep(iMidPoint, jMidPoint-difference/2, difference/2, summandValue)
-        this.squareStep(iMidPoint, jMidPoint+difference/2, difference/2, summandValue)
+        // diamonds
+        for (var i = iStart + level; i < iEnd; i += level) {
+            for (var j = jStart + level; j < jEnd; j += level) {
+                var a = this.points[i - level][j - level][2];
+                var b = this.points[i][j - level][2];
+                var c = this.points[i - level][j][2];
+                var d = this.points[i][j][2];
+                var e = this.points[i - level / 2][j - level / 2][2] = (a + b + c + d) / 4 + random(-1, 1) * summandValue;
+            }
+        }
 
-        this.diamondStep(iStart, jStart, iMidPoint, jMidPoint, summandValue)
-        this.diamondStep(iMidPoint, jStart, iEnd, jMidPoint, summandValue)
-        this.diamondStep(iStart, jMidPoint, iMidPoint, jEnd, summandValue)
-        this.diamondStep(iMidPoint, jMidPoint, iEnd, jEnd, summandValue)
+        // squares
+        for (var i = iStart + 2 * level; i < iEnd; i += level) {
+            for (var j = jStart + 2 * level; j < jEnd; j += level) {
+                var a = this.points[i - level][j - level][2];
+                var b = this.points[i][j - level][2];
+                var c = this.points[i - level][j][2];
+                var d = this.points[i][j][2];
+                var e = this.points[i - level / 2][j - level / 2][2];
 
-    }
+                var f = this.points[i - level][j - level / 2][2] = (a + c + e + this.points[i - 3 * level / 2][j - level / 2][2]) / 4 + random(-1, 1) * summandValue;
+                var g = this.points[i - level / 2][j - level][2] = (a + b + e + this.points[i - level / 2][j - 3 * level / 2][2]) / 4 + random(-1, 1) * summandValue;
+            }
+        }
 
-    squareStep(iMidPoint, jMidPoint, difference, summandValue){
-        var leftValue = 0;
-        var rightValue = 0;
-        var lowerValue = 0;
-        var upperValue = 0;
-        if(iMidPoint - difference >= 0){
-            leftValue = this.points[iMidPoint - difference][jMidPoint][2]
-        }
-        if(iMidPoint + difference < this.numberOfLines){
-            rightValue = this.points[iMidPoint + difference][jMidPoint][2]
-        }
-        if(jMidPoint - difference >= 0){
-            lowerValue = this.points[iMidPoint][jMidPoint - difference][2]
-        }
-        if(jMidPoint + difference < this.numberOfLines){
-            upperValue = this.points[iMidPoint][jMidPoint + difference][2]
-        }
-        var value = (leftValue + rightValue + lowerValue + upperValue) / 4 + random(-summandValue, summandValue);
-        this.points[iMidPoint][jMidPoint][2] = value;
+        this.diamondSquare(iStart, jStart, iEnd, jEnd, summandValue / 2, level / 2);
     }
 
     generateTerrain() {
         var data = [];
 
         this.numberOfPoints = 0;
+        var cutOff = 0;
 
-        for (var i = 0; i < this.points.length-1; i++) {
-            for (var j = 0; j < this.points[i].length-1; j++) {
-                var n1 = vectorProduct(vectorPoints(this.points[i][j+1], this.points[i][j]), vectorPoints(this.points[i+1][j+1], this.points[i][j]))
-                var n2 = vectorProduct(vectorPoints(this.points[i][j], this.points[i+1][j+1]), vectorPoints(this.points[i+1][j], this.points[i+1][j+1]))
-                data.push(this.points[i][j][0], this.points[i][j][1], this.points[i][j][2], 
+        for (var i = cutOff; i < this.points.length - cutOff-1; i++) {
+            for (var j = cutOff; j < this.points[i].length - cutOff-1; j++) {
+                var n1 = vectorProduct(vectorPoints(this.points[i][j + 1], this.points[i][j]), vectorPoints(this.points[i + 1][j + 1], this.points[i][j]))
+                var n2 = vectorProduct(vectorPoints(this.points[i][j], this.points[i + 1][j + 1]), vectorPoints(this.points[i + 1][j], this.points[i + 1][j + 1]))
+
+                var color1 = this.getColorOnHeight(this.points[i][j][2]);
+                var color2 = this.getColorOnHeight(this.points[i][j+1][2]);
+                var color3 = this.getColorOnHeight(this.points[i+1][j][2]);
+                var color4 = this.getColorOnHeight(this.points[i+1][j+1][2]);
+
+                data.push(this.points[i][j][0], this.points[i][j][1], this.points[i][j][2],
                     -n1[0], -n1[1], -n1[2],
-                    this.color[0], this.color[1], this.color[2]    
+                    color1[0], color1[1], color1[2]
                 );
-                data.push(this.points[i][j+1][0], this.points[i][j+1][1], this.points[i][j+1][2], 
+                data.push(this.points[i][j + 1][0], this.points[i][j + 1][1], this.points[i][j + 1][2],
                     -n1[0], -n1[1], -n1[2],
-                    this.color[0], this.color[1], this.color[2]    
+                    color2[0], color2[1], color2[2]
                 );
-                data.push(this.points[i+1][j+1][0], this.points[i+1][j+1][1], this.points[i+1][j+1][2], 
+                data.push(this.points[i + 1][j + 1][0], this.points[i + 1][j + 1][1], this.points[i + 1][j + 1][2],
                     -n1[0], -n1[1], -n1[2],
-                    this.color[0], this.color[1], this.color[2]    
+                    color4[0], color4[1], color4[2]
                 );
 
-                data.push(this.points[i][j][0], this.points[i][j][1], this.points[i][j][2], 
+                data.push(this.points[i][j][0], this.points[i][j][1], this.points[i][j][2],
                     n2[0], n2[1], n2[2],
-                    this.color[0], this.color[1], this.color[2]    
+                    color1[0], color1[1], color1[2]
                 );
-                data.push(this.points[i+1][j][0], this.points[i+1][j][1], this.points[i+1][j][2], 
+                data.push(this.points[i + 1][j][0], this.points[i + 1][j][1], this.points[i + 1][j][2],
                     n2[0], n2[1], n2[2],
-                    this.color[0], this.color[1], this.color[2]    
+                    color3[0], color3[1], color3[2]
                 );
-                data.push(this.points[i+1][j+1][0], this.points[i+1][j+1][1], this.points[i+1][j+1][2], 
+                data.push(this.points[i + 1][j + 1][0], this.points[i + 1][j + 1][1], this.points[i + 1][j + 1][2],
                     n2[0], n2[1], n2[2],
-                    this.color[0], this.color[1], this.color[2]    
+                    color4[0], color4[1], color4[2]
                 );
-                this.numberOfPoints +=6;
+                this.numberOfPoints += 6;
             }
         }
         return data;
+    }
+
+    getColorOnHeight(height){
+        if(height < this.waterLevel-2){
+            return [0.2,0.5,0.9];
+        }
+        if(height >= this.waterLevel-5 && height < this.greenThreshold){
+            var heightPercentage = (Math.round(height - (this.waterLevel-5)) / (this.greenThreshold - (this.waterLevel-5)) + 0.4) * 100 / 360;
+            var color = hslToRgb(heightPercentage, 1, 0.5);
+            return color;
+        }
+        if(height >= this.greenThreshold && height < this.permanentFrost){
+            var heightPercentage = (Math.round(height - this.greenThreshold) / (this.permanentFrost - this.greenThreshold));
+            if(heightPercentage+0.5 > 1) {
+                heightPercentage = 1;
+            }
+            var color = hslToRgb(0.4, 1, heightPercentage+0.5);
+            return color;
+        }
+        if(height >= this.permanentFrost){
+            return [1,1,1];
+        }
     }
 
     drawGrid() {
@@ -155,4 +178,29 @@ class TerrainGenerator {
         this.drawGrid(); // самото рисуване
         popMatrix(); // възстановяваме матрицата
     }
+}
+
+function hslToRgb(h, s, l){
+    var r, g, b;
+
+    if(s == 0){
+        r = g = b = l; // achromatic
+    }else{
+        var hue2rgb = function hue2rgb(p, q, t){
+            if(t < 0) t += 1;
+            if(t > 1) t -= 1;
+            if(t < 1/6) return p + (q - p) * 6 * t;
+            if(t < 1/2) return q;
+            if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        }
+
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        var p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+
+    return [r, g, b]
 }
