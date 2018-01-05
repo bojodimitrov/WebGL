@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+
+<!-- Ами това е началният код. Няма почти нищо в него, затова
+го напълнете с каквото счетете за подходящо. -->
+
+<head>
+	<meta charset="utf-8" />
+	<title>Графиката</title>
+
+	<script src="webgl-fmi.js"></script>
+	<script src="shaders.js"></script>
+	<script src="FunctionGraph.js"></script>
+
+	<style>
+		canvas {
+			display: block;
+			position: fixed;
+			left: 2em;
+			top: 2em;
+			margin: auto;
+			width: calc(100% - 4em);
+			height: calc(100% - 4em);
+			box-shadow: 0px 0px 6em rgb(100, 100, 100);
+		}
+	</style>
+
+	<script>
+		function start() {
+			var c = document.getElementById("picasso");
+			resize(c);
+			
+			gl = getContext("picasso");
+			glprog = getProgram(vShader, fShader);
+
+			gl.enable(gl.BLEND);
+			gl.blendFunc(gl.SRC_ALPHA,gl.SRC_ONE_MINUS_ALPHA);
+			gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+			
+			func1 = new Function(x => Math.sin(x/100), [0, 0, 0]);
+			func1.moveHorizontally(-1);
+			func1.moveVertically(-0.8);
+			func1.rescaleWidth(5000);
+			func1.rescaleHeight(20);
+
+			leftPointer = new Pointer(2514);
+
+			getVariables();
+			drawFrame();
+		}
+
+		function drawFrame() {
+			//gl.clearColor(0.5+sin(now()),0.5+sin(now()+2*PI/3),0.5+sin(now()+4*PI/3),1);
+			gl.clearColor(0.9, 0.9, 0.9, 1);
+			gl.clear(gl.COLOR_BUFFER_BIT + gl.DEPTH_BUFFER_BIT);
+
+			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+			gl.uniform1f(uAlpha,1);
+			func1.draw();
+			gl.uniform1f(uAlpha,0.6);
+			leftPointer.draw();
+			requestAnimationFrame(drawFrame);
+		}
+
+		function resize(canvas) {
+			// Lookup the size the browser is displaying the canvas.
+			var displayWidth = canvas.clientWidth;
+			var displayHeight = canvas.clientHeight;
+
+			// Check if the canvas is not the same size.
+			if (canvas.width != displayWidth ||
+				canvas.height != displayHeight) {
+
+				// Make the canvas the same size
+				canvas.width = displayWidth;
+				canvas.height = displayHeight;
+			}
+		}
+	</script>
+</head>
+
+<body onload="start()">
+	<canvas id="picasso" ></canvas>
+</body>

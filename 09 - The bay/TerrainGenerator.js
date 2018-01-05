@@ -4,12 +4,13 @@ class TerrainGenerator {
         this.size = size;//x and y dimensions
         this.density = density;
         this.dimensions = dimensions;
-        this.elevation = 60;
+        this.elevation = 50;
+        this.cutoff = 25;
         this.color = [0.1, 0.8, 0.2];
         this.worldBottom = -160;
         this.waterLevel = 0;
-        this.greenThreshold = 10;
-        this.permanentFrost = 70;
+        this.greenThreshold = 5;
+        this.permanentFrost = 50;
         this.shoreDepth = 1;
         this.highestPeak = [0,0,0];
         this.generatePoints();
@@ -105,7 +106,7 @@ class TerrainGenerator {
         var data = [];
 
         this.numberOfPoints = 0;
-        var cutOff = 25;
+        var cutOff = this.cutoff;
 
         for (var i = cutOff; i < this.points.length - cutOff - 1; i++) {
             for (var j = cutOff; j < this.points[i].length - cutOff - 1; j++) {
