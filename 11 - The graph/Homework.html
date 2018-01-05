@@ -15,63 +15,174 @@
 		canvas {
 			display: block;
 			position: fixed;
-			left: 2em;
-			top: 2em;
+			left: 32px;
+			top: 32px;
 			margin: auto;
-			width: calc(100% - 4em);
-			height: calc(100% - 4em);
+			width: calc(100% - 64px);
+			height: calc(100% - 64px);
 			box-shadow: 0px 0px 6em rgb(100, 100, 100);
 		}
 	</style>
 
 	<script>
+
 		function start() {
-			var c = document.getElementById("picasso");
+			mouseIsDown = false;
+			moveLeftPointer = false;
+			moveRightPointer = false;
+			c = document.getElementById("picasso");
+
 			resize(c);
-			
+
 			gl = getContext("picasso");
 			glprog = getProgram(vShader, fShader);
 
 			gl.enable(gl.BLEND);
-			gl.blendFunc(gl.SRC_ALPHA,gl.SRC_ONE_MINUS_ALPHA);
+			gl.blendFunc(gl.SRC_ALPHA, gl.SRC_ONE_MINUS_ALPHA);
 			gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-			
-			func1 = new Function(x => Math.sin(x/100), [0, 0, 0]);
-			func1.moveHorizontally(-1);
-			func1.moveVertically(-0.8);
-			func1.rescaleWidth(5000);
-			func1.rescaleHeight(20);
 
-			leftPointer = new Pointer(2514);
+			leftEnd = 3000;
+			rightEnd = 4000;
+
+
+
+			functions =
+				[
+					functionBuilder(x => Math.cos(x / 1120)),
+					functionBuilder(x => Math.sin(x / 300)),
+					functionBuilder(x => Math.sin(x / 400 + Math.tan(x / 250))),
+					functionBuilder(x => Math.cos(x/100) + 0.3*Math.cos(x/5)),
+					functionBuilder(x => Math.sin(Math.tan(x/100) *Math.cos(x/30))),
+				];
+
+			for (var i = 0; i < functions.length; i++) {
+				var verticalOffset = random(-0.15, 0.15);
+				positionInBottomOfCanvas(functions[i][0], verticalOffset);
+				positionInCenterOfCanvas(functions[i][1], leftEnd, rightEnd, 4 * verticalOffset);
+			}
+
+			leftPointer = new Pointer(leftEnd, 'left');
+			rightPointer = new Pointer(rightEnd, 'right');
+
+			initCanvasMouseEvents(c, leftEnd, rightEnd);
 
 			getVariables();
 			drawFrame();
 		}
 
+		function initCanvasMouseEvents(canvas) {
+			canvas.addEventListener("mousedown", function () {
+				mouseIsDown = true;
+				var mousePos = Math.round((event.clientX - 32) / canvas.width * 10000);
+				if (mousePos < leftEnd + 40 && mousePos > leftEnd - 40) {
+					moveLeftPointer = true;
+				}
+				if (mousePos < rightEnd + 40 && mousePos > rightEnd - 40) {
+					moveRightPointer = true;
+				}
+				console.log("mouse is down");
+			}, false);
+			canvas.addEventListener("mouseup", function () {
+				mouseIsDown = false;
+				moveLeftPointer = false;
+				moveRightPointer = false;
+				console.log("mouse is up");
+			}, false);
+			canvas.addEventListener("mousemove", function (event) {
+				if (mouseIsDown) {
+					var mousePos = Math.round((event.clientX - 32) / canvas.width * 10000);
+
+					if (moveLeftPointer && mousePos < rightEnd) {
+						leftEnd = mousePos;
+						leftPointer.updateX(mousePos);
+						leftPointer.redraw();
+						for (var i = 0; i < functions.length; i++) {
+							rescale(functions[i][1], leftEnd, rightEnd);
+						}
+					}
+
+					if (moveRightPointer && mousePos > leftEnd) {
+						rightEnd = mousePos;
+						rightPointer.updateX(mousePos);
+						rightPointer.redraw();
+						for (var i = 0; i < functions.length; i++) {
+							rescale(functions[i][1], leftEnd, rightEnd);
+						}
+					}
+				}
+			}, false);
+		}
+
+		function rescale(func, a, b){
+			func.updateInterval(a, b);
+			func.changeXWith(-a);
+			func.rescaleWidth((b - a) / 2);
+			func.redraw();
+		}
+
+		function positionInCenterOfCanvas(func, a, b, verticalOffset) {
+			func.updateInterval(a, b);
+			func.changeXWith(-a);
+			func.rescaleWidth((b - a) / 2);
+			func.moveHorizontally(-1);
+			func.rescaleHeight(5);
+			func.moveVertically(0.2 + verticalOffset);
+			func.redraw();
+		}
+
+		function positionInBottomOfCanvas(func, verticalOffset) {
+			func.moveHorizontally(-1);
+			func.moveVertically(-0.8 + verticalOffset);
+			func.rescaleWidth(5000);
+			func.rescaleHeight(20);
+			func.redraw();
+		}
+
+		function functionBuilder(func) {
+			color = [random(0, 1), random(0, 1), random(0, 1)]
+			return [
+				new Function(func, color, false),
+				new Function(func, color, true)
+			]
+		}
+
 		function drawFrame() {
+			resize(c);
+
 			//gl.clearColor(0.5+sin(now()),0.5+sin(now()+2*PI/3),0.5+sin(now()+4*PI/3),1);
 			gl.clearColor(0.9, 0.9, 0.9, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT + gl.DEPTH_BUFFER_BIT);
 
 			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 
-			gl.uniform1f(uAlpha,1);
-			func1.draw();
-			gl.uniform1f(uAlpha,0.6);
-			leftPointer.draw();
+			gl.uniform1f(uAlpha, 1);
+
+			for (var i = 0; i < functions.length; i++) {
+				drawFunction(functions[i]);
+			}
+
+			leftPointer.drawPointer();
+			rightPointer.drawPointer();
+
+			gl.uniform1f(uAlpha, 0.6);
+			leftPointer.drawGradient();
+			rightPointer.drawGradient();
+
 			requestAnimationFrame(drawFrame);
 		}
 
+		function drawFunction(func) {
+			func[0].draw();
+			func[1].draw();
+		}
+
 		function resize(canvas) {
-			// Lookup the size the browser is displaying the canvas.
 			var displayWidth = canvas.clientWidth;
 			var displayHeight = canvas.clientHeight;
 
-			// Check if the canvas is not the same size.
 			if (canvas.width != displayWidth ||
 				canvas.height != displayHeight) {
 
-				// Make the canvas the same size
 				canvas.width = displayWidth;
 				canvas.height = displayHeight;
 			}
@@ -80,5 +191,5 @@
 </head>
 
 <body onload="start()">
-	<canvas id="picasso" ></canvas>
+	<canvas id="picasso"></canvas>
 </body>

@@ -88,7 +88,7 @@ var glmat;			// глобална матрица на модела
 var glmatnew;		// true, ако матрицата е променена, но не е подадена на шейдъра
 var glvmat;			// глобална матрица на гледната точка
 var glstack = [];	// стек от матрици на модела
-
+var segmentPart = -0.6;
 
 // брой байтове в един WebGL FLOAT (трябва да са 4 байта)
 var FLOATS = Float32Array.BYTES_PER_ELEMENT;
